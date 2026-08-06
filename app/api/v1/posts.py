@@ -10,7 +10,9 @@ from app.repositories.post_repo import post_repo
 from app.repositories.job_repo import job_repo
 from app.repositories.embedding_repo import post_embedding_repo
 from app.schemas.post import BlogPostCreate, BlogPostResponse, SinglePostCreateResponse, PostEmbeddingResponse
+from app.schemas.suggestion import SuggestionResponse
 from app.workers.post_worker import post_worker
+
 
 router = APIRouter()
 
@@ -134,3 +136,109 @@ async def get_post_embedding(
         )
 
     return PostEmbeddingResponse.model_validate(embedding)
+
+
+@router.get(
+    "/{id}/matches",
+    response_model=List[SuggestionResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get Top Candidate Image Matches",
+    description="Retrieves Top-K candidate image matches ranked by vector embedding similarity."
+)
+async def get_post_matches(
+    id: UUID,
+    top_k: int = Query(5, ge=1, le=20, description="Top K candidate limit"),
+    db: AsyncSession = Depends(get_db)
+) -> List[SuggestionResponse]:
+    from app.repositories.suggestion_repo import suggestion_repo
+    from app.repositories.image_repo import image_repo
+    from app.services.matching_engine import matching_engine
+    from app.schemas.image import ImageResponse
+
+    post = await post_repo.get(db, id)
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"BlogPost with ID '{id}' not found."
+        )
+
+    # Check if suggestions already exist; if not, execute matching engine
+    suggestions = await suggestion_repo.get_by_post_id(db, id)
+    if not suggestions:
+        try:
+            suggestions = await matching_engine.generate_matches_for_post(db, id, top_k=top_k)
+        except ValueError as ve:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(ve)
+            )
+
+    response_list: List[SuggestionResponse] = []
+    for sug in suggestions[:top_k]:
+        img = await image_repo.get(db, sug.image_id)
+        img_resp = ImageResponse.model_validate(img) if img else None
+        
+        response_list.append(
+            SuggestionResponse(
+                id=sug.id,
+                post_id=sug.post_id,
+                image_id=sug.image_id,
+                image=img_resp,
+                similarity_score=sug.final_score,
+                rank=sug.rank,
+                match_status=sug.match_status,
+                match_reasoning=sug.match_reasoning,
+                is_reviewed=sug.is_reviewed,
+                created_at=sug.created_at
+            )
+        )
+
+    return response_list
+
+
+@router.post(
+    "/{id}/match",
+    response_model=List[SuggestionResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Trigger Semantic Matching Pipeline",
+    description="Forces execution of semantic matching engine to compute top candidate image recommendations."
+)
+async def trigger_post_matching(
+    id: UUID,
+    top_k: int = Query(5, ge=1, le=20),
+    db: AsyncSession = Depends(get_db)
+) -> List[SuggestionResponse]:
+    from app.services.matching_engine import matching_engine
+    from app.repositories.image_repo import image_repo
+    from app.schemas.image import ImageResponse
+
+    try:
+        suggestions = await matching_engine.generate_matches_for_post(db, id, top_k=top_k)
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ve)
+        )
+
+    response_list: List[SuggestionResponse] = []
+    for sug in suggestions:
+        img = await image_repo.get(db, sug.image_id)
+        img_resp = ImageResponse.model_validate(img) if img else None
+
+        response_list.append(
+            SuggestionResponse(
+                id=sug.id,
+                post_id=sug.post_id,
+                image_id=sug.image_id,
+                image=img_resp,
+                similarity_score=sug.final_score,
+                rank=sug.rank,
+                match_status=sug.match_status,
+                match_reasoning=sug.match_reasoning,
+                is_reviewed=sug.is_reviewed,
+                created_at=sug.created_at
+            )
+        )
+
+    return response_list
+

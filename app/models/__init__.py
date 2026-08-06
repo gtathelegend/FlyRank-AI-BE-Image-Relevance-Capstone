@@ -7,6 +7,7 @@ from app.models.review import ReviewDecision, ReviewAction
 from app.models.metadata import ImageMetadata
 from app.models.post import BlogPost, PostStatus
 from app.models.embedding import ImageEmbedding, PostEmbedding
+from app.models.suggestion import Suggestion, MatchStatus
 
 __all__ = [
     "Base",
@@ -26,6 +27,9 @@ __all__ = [
     "PostStatus",
     "ImageEmbedding",
     "PostEmbedding",
+    "Suggestion",
+    "MatchStatus",
 ]
+
 
 
