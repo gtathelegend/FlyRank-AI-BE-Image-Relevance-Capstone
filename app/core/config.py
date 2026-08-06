@@ -65,7 +65,13 @@ class Settings(BaseSettings):
     STORAGE_DATASETS_DIR: Path = STORAGE_BASE_DIR / "datasets"
     LOGS_DIR: Path = BASE_DIR / "logs"
 
+    # Mismatch Guard Thresholds
+    MISMATCH_GUARD_MIN_SIMILARITY: float = 0.70
+    MISMATCH_GUARD_MIN_CONFIDENCE: float = 0.80
+    MISMATCH_GUARD_ENABLE_LLM_VALIDATION: bool = True
+
     LOG_LEVEL: str = "INFO"
+
 
 
 settings = Settings()

@@ -13,6 +13,8 @@ class SuggestionResponse(BaseModel):
     image_id: UUID
     image: Optional[ImageResponse] = None
     similarity_score: float = Field(..., ge=0.0, le=1.0, description="Normalized similarity score between 0.0 and 1.0")
+    raw_similarity_score: Optional[float] = None
+    guard_confidence_score: Optional[float] = None
     rank: int = Field(..., ge=1, description="Top-K ranking position")
     match_status: MatchStatus
     match_reasoning: str
@@ -21,3 +23,12 @@ class SuggestionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MatchResultsResponse(BaseModel):
+    """Wrapper response schema for blog post matching results."""
+    post_id: UUID
+    has_confident_match: bool
+    status_message: str
+    total_candidates_evaluated: int
+    matches: List[SuggestionResponse]

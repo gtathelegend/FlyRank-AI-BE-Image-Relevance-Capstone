@@ -33,6 +33,11 @@ class PostWorkerService:
                 await db.commit()
             raise ValueError("Job or Post not found")
 
+        if post.status == PostStatus.INDEXED or job.status == JobStatus.COMPLETED:
+            logger.info(f"Worker skipping: Post embedding already completed for post_id={post_id}")
+            return job
+
+
         job.status = JobStatus.RUNNING
         await db.commit()
 

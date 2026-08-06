@@ -96,7 +96,9 @@ async def test_semantic_matching_engine_end_to_end(async_client: AsyncClient):
     # 4. Fetch candidate matches via API for Post 1
     matches1_res = await async_client.get(f"/api/v1/posts/{post1_id}/matches?top_k=5")
     assert matches1_res.status_code == 200
-    matches1 = matches1_res.json()
+    data = matches1_res.json()
+    assert "matches" in data
+    matches1 = data["matches"]
     assert isinstance(matches1, list)
     assert len(matches1) >= 2
 
@@ -105,3 +107,4 @@ async def test_semantic_matching_engine_end_to_end(async_client: AsyncClient):
     assert matches1[0]["similarity_score"] >= matches1[1]["similarity_score"]
     assert "match_reasoning" in matches1[0]
     assert len(matches1[0]["match_reasoning"]) > 10
+

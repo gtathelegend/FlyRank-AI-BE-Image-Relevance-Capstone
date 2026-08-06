@@ -6,12 +6,15 @@ from app.api.deps import get_db
 from app.core.logging import logger
 from app.models.job import JobType, JobStatus
 from app.models.post import PostStatus
+from app.models.suggestion import MatchStatus
 from app.repositories.post_repo import post_repo
 from app.repositories.job_repo import job_repo
 from app.repositories.embedding_repo import post_embedding_repo
 from app.schemas.post import BlogPostCreate, BlogPostResponse, SinglePostCreateResponse, PostEmbeddingResponse
-from app.schemas.suggestion import SuggestionResponse
+from app.schemas.suggestion import SuggestionResponse, MatchResultsResponse
 from app.workers.post_worker import post_worker
+
+
 
 
 router = APIRouter()
@@ -19,12 +22,15 @@ router = APIRouter()
 
 async def _run_post_worker_job(job_id: UUID, post_id: UUID):
     """Background task session wrapper for post embedding worker."""
-    async for db in get_db():
+    from app.main import app
+    db_factory = app.dependency_overrides.get(get_db, get_db)
+    async for db in db_factory():
         try:
             await post_worker.process_post_embedding_job(db, job_id, post_id)
         except Exception as e:
             logger.error(f"Background worker failed for post embedding job {job_id}: {e}")
         break
+
 
 
 @router.post(
@@ -140,16 +146,16 @@ async def get_post_embedding(
 
 @router.get(
     "/{id}/matches",
-    response_model=List[SuggestionResponse],
+    response_model=MatchResultsResponse,
     status_code=status.HTTP_200_OK,
     summary="Get Top Candidate Image Matches",
-    description="Retrieves Top-K candidate image matches ranked by vector embedding similarity."
+    description="Retrieves candidate image matches evaluated by Mismatch Guard. Prefers 'No confident match' over weak recommendations."
 )
 async def get_post_matches(
     id: UUID,
     top_k: int = Query(5, ge=1, le=20, description="Top K candidate limit"),
     db: AsyncSession = Depends(get_db)
-) -> List[SuggestionResponse]:
+) -> MatchResultsResponse:
     from app.repositories.suggestion_repo import suggestion_repo
     from app.repositories.image_repo import image_repo
     from app.services.matching_engine import matching_engine
@@ -173,18 +179,28 @@ async def get_post_matches(
                 detail=str(ve)
             )
 
-    response_list: List[SuggestionResponse] = []
+    confident_matches = [s for s in suggestions if s.match_status == MatchStatus.MATCHED]
+    has_confident_match = len(confident_matches) > 0
+
+    if has_confident_match:
+        status_msg = f"Found {len(confident_matches)} confident candidate image matches."
+    else:
+        status_msg = "No confident match found. Rejected all candidates due to low similarity or semantic conflict."
+
+    response_matches: List[SuggestionResponse] = []
     for sug in suggestions[:top_k]:
         img = await image_repo.get(db, sug.image_id)
         img_resp = ImageResponse.model_validate(img) if img else None
-        
-        response_list.append(
+
+        response_matches.append(
             SuggestionResponse(
                 id=sug.id,
                 post_id=sug.post_id,
                 image_id=sug.image_id,
                 image=img_resp,
                 similarity_score=sug.final_score,
+                raw_similarity_score=sug.raw_similarity_score,
+                guard_confidence_score=sug.guard_confidence_score,
                 rank=sug.rank,
                 match_status=sug.match_status,
                 match_reasoning=sug.match_reasoning,
@@ -193,21 +209,27 @@ async def get_post_matches(
             )
         )
 
-    return response_list
+    return MatchResultsResponse(
+        post_id=id,
+        has_confident_match=has_confident_match,
+        status_message=status_msg,
+        total_candidates_evaluated=len(suggestions),
+        matches=response_matches
+    )
 
 
 @router.post(
     "/{id}/match",
-    response_model=List[SuggestionResponse],
+    response_model=MatchResultsResponse,
     status_code=status.HTTP_200_OK,
     summary="Trigger Semantic Matching Pipeline",
-    description="Forces execution of semantic matching engine to compute top candidate image recommendations."
+    description="Forces re-evaluation of Mismatch Guard and semantic matching pipeline."
 )
 async def trigger_post_matching(
     id: UUID,
     top_k: int = Query(5, ge=1, le=20),
     db: AsyncSession = Depends(get_db)
-) -> List[SuggestionResponse]:
+) -> MatchResultsResponse:
     from app.services.matching_engine import matching_engine
     from app.repositories.image_repo import image_repo
     from app.schemas.image import ImageResponse
@@ -220,18 +242,28 @@ async def trigger_post_matching(
             detail=str(ve)
         )
 
-    response_list: List[SuggestionResponse] = []
-    for sug in suggestions:
+    confident_matches = [s for s in suggestions if s.match_status == MatchStatus.MATCHED]
+    has_confident_match = len(confident_matches) > 0
+
+    if has_confident_match:
+        status_msg = f"Found {len(confident_matches)} confident candidate image matches."
+    else:
+        status_msg = "No confident match found. Rejected all candidates due to low similarity or semantic conflict."
+
+    response_matches: List[SuggestionResponse] = []
+    for sug in suggestions[:top_k]:
         img = await image_repo.get(db, sug.image_id)
         img_resp = ImageResponse.model_validate(img) if img else None
 
-        response_list.append(
+        response_matches.append(
             SuggestionResponse(
                 id=sug.id,
                 post_id=sug.post_id,
                 image_id=sug.image_id,
                 image=img_resp,
                 similarity_score=sug.final_score,
+                raw_similarity_score=sug.raw_similarity_score,
+                guard_confidence_score=sug.guard_confidence_score,
                 rank=sug.rank,
                 match_status=sug.match_status,
                 match_reasoning=sug.match_reasoning,
@@ -240,5 +272,12 @@ async def trigger_post_matching(
             )
         )
 
-    return response_list
+    return MatchResultsResponse(
+        post_id=id,
+        has_confident_match=has_confident_match,
+        status_message=status_msg,
+        total_candidates_evaluated=len(suggestions),
+        matches=response_matches
+    )
+
 
