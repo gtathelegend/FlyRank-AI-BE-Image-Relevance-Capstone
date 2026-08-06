@@ -1,0 +1,43 @@
+name: AI Image Understanding & Content Matching Engine
+version: 1.0.0
+description: Production-grade AI-powered image understanding, semantic content matching engine, Mismatch Guard, human review workflow, evaluation engine, and cost analytics dashboard.
+
+author: Capstone Engineer
+repository: FlyRank-AI-BE-Image-Relevance-Capstone
+
+stack:
+  language: Python 3.12
+  framework: FastAPI
+  database: PostgreSQL 16 with pgvector extension
+  orm: SQLAlchemy 2.0 (AsyncIO with asyncpg)
+  migrations: Alembic
+  vision_ai: Gemini 1.5 Flash Vision
+  embeddings: Google Text Embedding 004
+  testing: Pytest & Pytest-AsyncIO
+
+stages:
+  stage_0: Initialize Database Models & Infrastructure
+  stage_1: Image Ingestion & Storage Pipeline
+  stage_2: AI Vision Processing Pipeline
+  stage_3: Semantic Vector Embedding Pipeline
+  stage_4: Semantic Relevance Engine & Candidate Retrieval
+  stage_5: Mismatch Guard Guardrail System
+  stage_6: Human Review Workflow (HITL)
+  stage_7: Quantitative Evaluation Engine
+  stage_8: Cost Tracking & Analytics Dashboard
+  stage_9: End-to-End Automated Integration Testing
+  stage_10: Documentation & Final Submission
+
+endpoints:
+  health: /api/v1/health
+  images: /api/v1/images
+  jobs: /api/v1/jobs
+  posts: /api/v1/posts
+  reviews: /api/v1/reviews
+  evaluation: /api/v1/evaluation
+  metrics: /api/v1/metrics
+
+metrics:
+  total_unit_and_integration_tests: 31
+  test_pass_rate: 100%
+  vector_dimension: 768
