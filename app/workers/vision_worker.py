@@ -83,13 +83,34 @@ class VisionWorkerService:
                 else:
                     await metadata_repo.create(db, meta_dict)
 
-                # 5. Mark image as PROCESSED
+                # 5. Generate and Store Image Vector Embedding
+                tags_str = ", ".join(vision_result.tags) if vision_result.tags else ""
+                objects_str = ", ".join(vision_result.objects) if vision_result.objects else ""
+                metadata_prompt = (
+                    f"Subject: {vision_result.primary_subject}. "
+                    f"Caption: {vision_result.caption}. "
+                    f"Description: {vision_result.scene_description}. "
+                    f"Tags: {tags_str}. "
+                    f"Objects: {objects_str}. "
+                    f"Environment: {vision_result.environment}."
+                )
+
+                from app.services.embedding_pipeline import embedding_pipeline
+                await embedding_pipeline.generate_and_store_image_embedding(
+                    db=db,
+                    image_id=img.id,
+                    metadata_text=metadata_prompt,
+                    job_id=job.id
+                )
+
+                # 6. Mark image as PROCESSED
                 img.status = ImageStatus.PROCESSED
                 processed_count += 1
                 job.processed_items = processed_count
                 await db.commit()
 
-                logger.info(f"Metadata stored & processing completed for image_id={img.id}")
+                logger.info(f"Metadata & Vector Embedding stored for image_id={img.id}")
+
 
             except Exception as e:
                 logger.error(f"Processing failed for image_id={img.id}: {e}")

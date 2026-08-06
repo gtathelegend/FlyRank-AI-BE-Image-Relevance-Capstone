@@ -228,3 +228,40 @@ async def get_image_vision_metadata(
         "created_at": metadata.created_at
     }
 
+
+@router.get(
+    "/{id}/embedding",
+    status_code=status.HTTP_200_OK,
+    summary="Get Image Vector Embedding Metadata",
+    description="Retrieves vector embedding metadata for a processed image asset."
+)
+async def get_image_embedding_metadata(
+    id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.repositories.embedding_repo import image_embedding_repo
+
+    image = await image_repo.get(db, id)
+    if not image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Image with ID '{id}' not found."
+        )
+
+    embedding = await image_embedding_repo.get_by_image_id(db, id)
+    if not embedding:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Vector embedding not yet generated for image '{id}'."
+        )
+
+    return {
+        "id": str(embedding.id),
+        "image_id": str(embedding.image_id),
+        "dimension": embedding.dimension,
+        "model_name": embedding.model_name,
+        "status": embedding.status,
+        "created_at": embedding.created_at
+    }
+
+

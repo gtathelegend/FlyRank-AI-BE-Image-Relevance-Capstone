@@ -5,6 +5,8 @@ from app.models.job import BatchJob, JobType, JobStatus
 from app.models.cost import CostLog, OperationType
 from app.models.review import ReviewDecision, ReviewAction
 from app.models.metadata import ImageMetadata
+from app.models.post import BlogPost, PostStatus
+from app.models.embedding import ImageEmbedding, PostEmbedding
 
 __all__ = [
     "Base",
@@ -20,5 +22,10 @@ __all__ = [
     "ReviewDecision",
     "ReviewAction",
     "ImageMetadata",
+    "BlogPost",
+    "PostStatus",
+    "ImageEmbedding",
+    "PostEmbedding",
 ]
+
 
