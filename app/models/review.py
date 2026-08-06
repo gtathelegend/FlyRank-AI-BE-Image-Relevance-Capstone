@@ -15,7 +15,12 @@ class ReviewDecision(Base, UUIDMixin, TimestampMixin):
     """Human-in-the-loop review decision tracking model."""
     __tablename__ = "review_decisions"
 
-    suggestion_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    suggestion_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("suggestions.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True
+    )
     reviewer_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     action = Column(
         SQLEnum(ReviewAction),
@@ -30,4 +35,5 @@ class ReviewDecision(Base, UUIDMixin, TimestampMixin):
     feedback_notes = Column(Text, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<ReviewDecision(id={self.id}, action='{self.action}')>"
+        return f"<ReviewDecision(id={self.id}, suggestion_id={self.suggestion_id}, action='{self.action}')>"
+

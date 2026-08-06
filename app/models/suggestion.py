@@ -11,6 +11,12 @@ class MatchStatus(str, enum.Enum):
     NO_CONFIDENT_MATCH = "NO_CONFIDENT_MATCH"
 
 
+class ReviewStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
 class Suggestion(Base, UUIDMixin, TimestampMixin):
     """Semantic match suggestion model connecting blog posts to top candidate images."""
     __tablename__ = "suggestions"
@@ -39,9 +45,16 @@ class Suggestion(Base, UUIDMixin, TimestampMixin):
     )
     match_reasoning = Column(Text, nullable=False)
     is_reviewed = Column(Boolean, default=False, nullable=False)
+    review_status = Column(
+        SQLEnum(ReviewStatus),
+        default=ReviewStatus.PENDING,
+        nullable=False,
+        index=True
+    )
 
     def __repr__(self) -> str:
         return (
             f"<Suggestion(id={self.id}, post_id={self.post_id}, image_id={self.image_id}, "
-            f"rank={self.rank}, score={self.final_score:.4f})>"
+            f"rank={self.rank}, score={self.final_score:.4f}, review_status='{self.review_status}')>"
         )
+
