@@ -181,3 +181,50 @@ async def get_image(
             detail=f"Image with ID '{id}' not found."
         )
     return ImageResponse.model_validate(image)
+
+
+@router.get(
+    "/{id}/metadata",
+    status_code=status.HTTP_200_OK,
+    summary="Get AI Image Vision Metadata",
+    description="Retrieves AI-generated structured vision metadata for a processed image asset."
+)
+async def get_image_vision_metadata(
+    id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.repositories.metadata_repo import metadata_repo
+
+    image = await image_repo.get(db, id)
+    if not image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Image with ID '{id}' not found."
+        )
+
+    metadata = await metadata_repo.get_by_image_id(db, id)
+    if not metadata:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"AI Vision metadata not yet processed or available for image '{id}'."
+        )
+
+    return {
+        "id": str(metadata.id),
+        "image_id": str(metadata.image_id),
+        "primary_subject": metadata.primary_subject,
+        "secondary_subjects": metadata.secondary_subjects,
+        "caption": metadata.caption,
+        "scene_description": metadata.scene_description,
+        "tags": metadata.tags,
+        "objects": metadata.objects,
+        "animals": metadata.animals,
+        "colors": metadata.colors,
+        "environment": metadata.environment,
+        "ocr_text": metadata.ocr_text,
+        "confidence": metadata.confidence,
+        "safety_notes": metadata.safety_notes,
+        "model_version": metadata.model_version,
+        "created_at": metadata.created_at
+    }
+

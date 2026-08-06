@@ -4,6 +4,7 @@ from app.models.image import Image, ImageStatus
 from app.models.job import BatchJob, JobType, JobStatus
 from app.models.cost import CostLog, OperationType
 from app.models.review import ReviewDecision, ReviewAction
+from app.models.metadata import ImageMetadata
 
 __all__ = [
     "Base",
@@ -18,4 +19,6 @@ __all__ = [
     "OperationType",
     "ReviewDecision",
     "ReviewAction",
+    "ImageMetadata",
 ]
+

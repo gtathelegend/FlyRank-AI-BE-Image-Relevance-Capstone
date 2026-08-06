@@ -1,20 +1,21 @@
+import os
 import asyncio
 import pytest
 import pytest_asyncio
+from pathlib import Path
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.core.database import Base, get_db
+import app.models as models  # Register all ORM models on Base.metadata
 
-# Test in-memory SQLite database URL using StaticPool to share connection state
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_DB_FILE = Path(__file__).parent / "test_stage2.db"
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_FILE}"
 
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    connect_args={"check_same_thread": False}
 )
 
 TestingSessionLocal = async_sessionmaker(
@@ -49,6 +50,12 @@ async def prepare_database():
     yield
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+    if TEST_DB_FILE.exists():
+        try:
+            os.remove(TEST_DB_FILE)
+        except OSError:
+            pass
 
 
 @pytest_asyncio.fixture
