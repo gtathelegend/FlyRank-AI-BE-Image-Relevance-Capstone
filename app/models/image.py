@@ -16,9 +16,13 @@ class Image(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "images"
 
     filename = Column(String(255), nullable=False)
+    original_filename = Column(String(255), nullable=False)
+    stored_filename = Column(String(255), nullable=False)
     storage_path = Column(String(512), nullable=False)
     content_type = Column(String(100), nullable=False)
     file_size = Column(BigInteger, nullable=False)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
     file_hash = Column(String(64), nullable=True, index=True)
     status = Column(
         SQLEnum(ImageStatus),
@@ -28,4 +32,5 @@ class Image(Base, UUIDMixin, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<Image(id={self.id}, filename='{self.filename}', status='{self.status}')>"
+        return f"<Image(id={self.id}, original_filename='{self.original_filename}', status='{self.status}')>"
+
