@@ -134,3 +134,30 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Storage (Keep directory structure via .gitkeep)
+storage/images/*
+!storage/images/.gitkeep
+storage/metadata/*
+!storage/metadata/.gitkeep
+storage/embeddings/*
+!storage/embeddings/.gitkeep
+storage/datasets/*
+!storage/datasets/.gitkeep
+logs/*
+!logs/.gitkeep
+
